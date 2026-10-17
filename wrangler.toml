@@ -1,5 +1,6 @@
 name = "driver-salary-system"
 compatibility_date = "2024-09-23"
+main = "worker.js"
 pages_build_output_dir = "dist"
 
 [assets]
