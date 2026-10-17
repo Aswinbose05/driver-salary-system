@@ -170,10 +170,10 @@ export const DailyWorkForm: React.FC<DailyWorkFormProps> = ({
       )}
 
       {existingRecord && !initialRecord && (
-        <div className="mt-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+        <div className="mt-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <span>
-            A record already exists for this date (Current: {existingRecord.regular_shift ? 'Yes' : 'No'}, {existingRecord.ot_count} OT drives, {formatINR(existingRecord.total_earnings)}). Submitting will update this record.
+            <strong>Duplicate Protected:</strong> An entry already exists for this date (Current: {existingRecord.regular_shift ? 'Yes' : 'No'}, {existingRecord.ot_count} OT, {formatINR(existingRecord.total_earnings)}). Submitting will update this record and will not create a duplicate.
           </span>
         </div>
       )}

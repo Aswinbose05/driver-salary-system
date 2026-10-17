@@ -28,6 +28,7 @@ interface AppContextType {
   deletePayment: (paymentId: string) => boolean;
   updateRates: (newRates: AppRates) => void;
   saveProfile: (profile: UserProfile) => void;
+  removeDuplicates: () => { removedCount: number; remainingCount: number };
   resetDemoData: () => void;
   refreshData: () => void;
 }
@@ -124,6 +125,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   };
 
+  const removeDuplicates = () => {
+    const res = StorageService.removeDuplicateRecords(currentUser || undefined);
+    refreshData();
+    return res;
+  };
+
   const resetDemoData = () => {
     StorageService.resetToFactoryDefaults();
     refreshData();
@@ -150,6 +157,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deletePayment,
         updateRates,
         saveProfile,
+        removeDuplicates,
         resetDemoData,
         refreshData,
       }}

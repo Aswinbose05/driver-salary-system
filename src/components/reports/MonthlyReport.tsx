@@ -14,6 +14,7 @@ import {
   Edit2,
   Trash2,
   Search,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -31,7 +32,7 @@ import { WorkRecord, UserProfile } from '../../types';
 
 export const MonthlyReport: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
-  const { drivers, workRecords, rates, deleteWorkRecord } = useApp();
+  const { drivers, workRecords, rates, deleteWorkRecord, removeDuplicates } = useApp();
 
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthString());
   const [selectedDriverId, setSelectedDriverId] = useState<string>(
@@ -224,6 +225,23 @@ export const MonthlyReport: React.FC = () => {
             >
               <Printer className="w-4 h-4" />
               <span>Print Payslip</span>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                const res = removeDuplicates();
+                if (res.removedCount > 0) {
+                  alert(`Deduplication scan complete: Removed ${res.removedCount} duplicate record(s). Strictly 1 record per driver per date retained.`);
+                } else {
+                  alert(`Zero duplicates found! All ${res.remainingCount} work records are verified unique.`);
+                }
+              }}
+              className="touch-target px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5 border border-slate-700"
+              title="Scan and clean any duplicate records"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Remove Duplicates</span>
             </button>
           )}
         </div>

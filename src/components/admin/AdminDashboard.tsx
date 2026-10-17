@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   ArrowRight,
   UserPlus,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   BarChart,
@@ -47,12 +48,13 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab }) => {
   const { currentUser } = useAuth();
-  const { drivers, workRecords, payments, rates, selectedMonth } = useApp();
+  const { drivers, workRecords, payments, rates, selectedMonth, removeDuplicates } = useApp();
 
   const [showWorkModal, setShowWorkModal] = useState<boolean>(false);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showDriverModal, setShowDriverModal] = useState<boolean>(false);
   const [targetDriverId, setTargetDriverId] = useState<string>('');
+  const [dedupMsg, setDedupMsg] = useState<string | null>(null);
 
   const currentMonthStr = getCurrentMonthString();
   const todayStr = getTodayDateString();
@@ -156,8 +158,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateTab })
             <UserPlus className="w-4 h-4" />
             <span>Drivers</span>
           </button>
+
+          <button
+            onClick={() => {
+              const res = removeDuplicates();
+              if (res.removedCount > 0) {
+                setDedupMsg(`Deduplication scan complete: Removed ${res.removedCount} duplicate record(s). Strictly 1 record per driver per date retained.`);
+              } else {
+                setDedupMsg(`Verified: 0 duplicate records found. All ${res.remainingCount} work records are unique.`);
+              }
+              setTimeout(() => setDedupMsg(null), 4000);
+            }}
+            className="touch-target px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 transition-all flex items-center gap-1.5"
+            title="Scan database to prevent and remove any duplicate records"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Remove Duplicates</span>
+          </button>
         </div>
       </div>
+
+      {dedupMsg && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm font-bold flex items-center gap-2.5">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span>{dedupMsg}</span>
+        </div>
+      )}
 
       {/* Combined Fleet KPI Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">

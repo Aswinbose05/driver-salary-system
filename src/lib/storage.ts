@@ -3,12 +3,12 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { getTodayDateString } from './dateUtils';
 
 const STORAGE_KEYS = {
-  PROFILES: 'driver_mgmt_profiles',
-  WORK_RECORDS: 'driver_mgmt_work_records',
-  PAYMENTS: 'driver_mgmt_payments',
-  AUDIT_LOGS: 'driver_mgmt_audit_logs',
-  RATES: 'driver_mgmt_rates',
-  ACTIVE_USER: 'driver_mgmt_active_user',
+  PROFILES: 'driver_mgmt_profiles_v2', // v2 to cleanly migrate to Aswin, Bose & Ajay
+  WORK_RECORDS: 'driver_mgmt_work_records_v2',
+  PAYMENTS: 'driver_mgmt_payments_v2',
+  AUDIT_LOGS: 'driver_mgmt_audit_logs_v2',
+  RATES: 'driver_mgmt_rates_v2',
+  ACTIVE_USER: 'driver_mgmt_active_user_v2',
   THEME: 'driver_mgmt_theme',
 };
 
@@ -22,12 +22,12 @@ export const DEFAULT_RATES: AppRates = {
   time_zone: 'Asia/Kolkata',
 };
 
-// Initial four drivers + admin
+// Drivers are Bose and Ajay; Admin is Aswin
 export const INITIAL_PROFILES: UserProfile[] = [
   {
-    id: 'admin-1',
-    email: 'admin@fleet.local',
-    full_name: 'Vikram Singh (Admin)',
+    id: 'admin-aswin',
+    email: 'aswin@fleet.local',
+    full_name: 'Aswin (Admin)',
     phone: '+91 98765 43200',
     vehicle_number: 'FLEET-HQ',
     role: 'admin',
@@ -35,48 +35,28 @@ export const INITIAL_PROFILES: UserProfile[] = [
     created_at: '2026-01-01T00:00:00.000Z',
   },
   {
-    id: 'drv-1',
-    email: 'ramesh@driver.local',
-    full_name: 'Ramesh Kumar',
+    id: 'drv-bose',
+    email: 'bose@driver.local',
+    full_name: 'Bose',
     phone: '+91 98765 43210',
-    vehicle_number: 'KA-01-EQ-1001',
+    vehicle_number: 'TN-01-EQ-1001',
     role: 'driver',
     is_active: true,
     created_at: '2026-01-01T00:00:00.000Z',
   },
   {
-    id: 'drv-2',
-    email: 'suresh@driver.local',
-    full_name: 'Suresh Patel',
+    id: 'drv-ajay',
+    email: 'ajay@driver.local',
+    full_name: 'Ajay',
     phone: '+91 98765 43211',
-    vehicle_number: 'KA-01-EQ-1002',
-    role: 'driver',
-    is_active: true,
-    created_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'drv-3',
-    email: 'rajesh@driver.local',
-    full_name: 'Rajesh Sharma',
-    phone: '+91 98765 43212',
-    vehicle_number: 'KA-01-EQ-1003',
-    role: 'driver',
-    is_active: true,
-    created_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'drv-4',
-    email: 'mahesh@driver.local',
-    full_name: 'Mahesh Verma',
-    phone: '+91 98765 43213',
-    vehicle_number: 'KA-01-EQ-1004',
+    vehicle_number: 'TN-01-EQ-1002',
     role: 'driver',
     is_active: true,
     created_at: '2026-01-01T00:00:00.000Z',
   },
 ];
 
-// Generate seed records for realistic demonstration
+// Generate seed records for realistic demonstration (Strictly 1 record per driver per date - ZERO duplicates)
 function generateInitialRecords(): { records: WorkRecord[]; payments: PaymentRecord[]; logs: AuditLog[] } {
   const records: WorkRecord[] = [];
   const payments: PaymentRecord[] = [];
@@ -88,19 +68,17 @@ function generateInitialRecords(): { records: WorkRecord[]; payments: PaymentRec
   const currMonth = parseInt(currMonthStr, 10);
   const currDay = parseInt(currDayStr, 10);
 
-  // Populate days up to today for current month
   const drivers = INITIAL_PROFILES.filter((p) => p.role === 'driver');
 
   drivers.forEach((driver, dIdx) => {
-    // Generate records for current month
+    // Generate records for current month up to today
     for (let day = 1; day <= currDay; day++) {
-      // Simulate typical driving schedule: 6 days working, 1 day off
       const dayOfWeek = (day + dIdx) % 7;
       if (dayOfWeek === 0) continue; // Sunday off
 
       const dateStr = `${currYear}-${String(currMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
-      // Additional drives (OT): some days 0, some 1, some 2, occasional 3
+      // Additional drives (OT)
       let ot = 0;
       if ((day + dIdx) % 4 === 0) ot = 2;
       else if ((day + dIdx) % 2 === 0) ot = 1;
@@ -120,25 +98,15 @@ function generateInitialRecords(): { records: WorkRecord[]; payments: PaymentRec
         regular_rate: regRate,
         ot_rate: otRate,
         total_earnings: earnings,
-        notes: ot > 0 ? `Completed regular route + ${ot} airport / express pickup(s)` : 'Regular day shift',
+        notes: ot > 0 ? `Completed shift + ${ot} extra pickup(s)` : 'Regular day shift',
         created_at: `${dateStr}T18:30:00.000Z`,
         updated_at: `${dateStr}T18:30:00.000Z`,
         created_by: driver.full_name,
       });
     }
 
-    // Previous month: Add a recorded payment
-    let prevYear = currYear;
-    let prevMonth = currMonth - 1;
-    if (prevMonth <= 0) {
-      prevMonth = 12;
-      prevYear -= 1;
-    }
-    const prevMonthStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-    
-    // Add realistic payments
+    // Previous month: Add a recorded advance/payment
     if (dIdx === 0) {
-      // Ramesh: Advance payment for current month
       payments.push({
         id: `pay-${driver.id}-1`,
         driver_id: driver.id,
@@ -147,12 +115,11 @@ function generateInitialRecords(): { records: WorkRecord[]; payments: PaymentRec
         month_period: `${currYearStr}-${currMonthStr}`,
         payment_method: 'upi',
         reference: 'UPI/2026/0912984928',
-        notes: 'Mid-month diesel & allowance advance',
+        notes: 'Mid-month diesel & advance payment',
         created_at: `${currYearStr}-${currMonthStr}-05T10:00:00.000Z`,
-        created_by: 'Vikram Singh (Admin)',
+        created_by: 'Aswin (Admin)',
       });
     } else if (dIdx === 1) {
-      // Suresh: Bank transfer
       payments.push({
         id: `pay-${driver.id}-1`,
         driver_id: driver.id,
@@ -163,19 +130,19 @@ function generateInitialRecords(): { records: WorkRecord[]; payments: PaymentRec
         reference: 'IMPS/9812739182',
         notes: 'First installment payment',
         created_at: `${currYearStr}-${currMonthStr}-08T11:30:00.000Z`,
-        created_by: 'Vikram Singh (Admin)',
+        created_by: 'Aswin (Admin)',
       });
     }
   });
 
   logs.push({
     id: 'log-1',
-    actor_id: 'admin-1',
-    actor_name: 'Vikram Singh (Admin)',
+    actor_id: 'admin-aswin',
+    actor_name: 'Aswin (Admin)',
     action: 'CREATE',
     entity_type: 'driver',
     entity_id: 'all',
-    details: 'System initialized with 4 primary fleet driver profiles and default rates (₹800/shift, ₹800/OT).',
+    details: 'System configured with Admin: Aswin and Drivers: Bose & Ajay. Duplicate check enabled.',
     created_at: `${currYearStr}-${currMonthStr}-01T00:00:00.000Z`,
   });
 
@@ -204,6 +171,62 @@ export class StorageService {
     }
 
     this.isInitialized = true;
+    
+    // Automatically sanitize and remove any duplicate records on startup
+    this.removeDuplicateRecords();
+  }
+
+  // --- Duplicate Record Cleaner ---
+  /**
+   * Scans all work records and guarantees STRICT UNIQUENESS per (driver_id, work_date).
+   * If any duplicates exist, retains only the newest updated record and removes all duplicates.
+   */
+  public static removeDuplicateRecords(actor?: UserProfile): { removedCount: number; remainingCount: number } {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.WORK_RECORDS);
+      if (!data) return { removedCount: 0, remainingCount: 0 };
+
+      const records: WorkRecord[] = JSON.parse(data);
+      const seen = new Map<string, WorkRecord>();
+      let removedCount = 0;
+
+      // Sort by updated_at descending so that the newest record is kept
+      const sorted = [...records].sort(
+        (a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
+      );
+
+      for (const rec of sorted) {
+        const key = `${rec.driver_id}_${rec.work_date}`;
+        if (!seen.has(key)) {
+          seen.set(key, rec);
+        } else {
+          removedCount++;
+        }
+      }
+
+      if (removedCount > 0) {
+        const uniqueRecords = Array.from(seen.values()).sort((a, b) => b.work_date.localeCompare(a.work_date));
+        localStorage.setItem(STORAGE_KEYS.WORK_RECORDS, JSON.stringify(uniqueRecords));
+
+        const actorName = actor ? actor.full_name : 'System Sanitizer';
+        const actorId = actor ? actor.id : 'system';
+
+        this.addAuditLog({
+          id: `log-${Date.now()}`,
+          actor_id: actorId,
+          actor_name: actorName,
+          action: 'DELETE',
+          entity_type: 'work_record',
+          entity_id: 'duplicates',
+          details: `Deduplication complete: Purged ${removedCount} duplicate record(s). Strictly enforced 1 record per driver per date.`,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return { removedCount, remainingCount: seen.size };
+    } catch {
+      return { removedCount: 0, remainingCount: 0 };
+    }
   }
 
   // --- Profiles ---
@@ -243,7 +266,6 @@ export class StorageService {
     const oldRates = this.getRates();
     localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(rates));
     
-    // Log rate update in audit log
     this.addAuditLog({
       id: `log-${Date.now()}`,
       actor_id: actor.id,
@@ -251,7 +273,7 @@ export class StorageService {
       action: 'RATE_CHANGE',
       entity_type: 'rate',
       entity_id: 'app_settings',
-      details: `Rates updated: Regular ₹${oldRates.regular_rate} -> ₹${rates.regular_rate}, OT ₹${oldRates.ot_rate} -> ₹${rates.ot_rate}. Existing historical records preserve their recorded rate snapshots.`,
+      details: `Rates updated: Regular ₹${oldRates.regular_rate} -> ₹${rates.regular_rate}, OT ₹${oldRates.ot_rate} -> ₹${rates.ot_rate}. Existing records preserve their snapshot rates.`,
       created_at: new Date().toISOString(),
     });
   }
@@ -269,12 +291,12 @@ export class StorageService {
 
   /**
    * Save or Update a Work Record
-   * Enforces business rules:
-   * 1. OT count must be non-negative integer.
-   * 2. Only ONE record allowed per driver per date (prevents duplicate regular shift).
-   * 3. Freezes current regular_rate and ot_rate snapshot for new records.
-   * 4. Accurately calculates total earnings = (regular_shift ? regular_rate : 0) + (ot_count * ot_rate).
-   * 5. Writes an audit log entry for changes.
+   * Strictly enforces:
+   * 1. Only ONE record allowed per driver per date (prevents duplicate regular shifts).
+   * 2. If a record already exists on that date for that driver, it updates that record.
+   * 3. Drops any duplicate occurrences.
+   * 4. Freezes current rate snapshot.
+   * 5. Accurately calculates total earnings.
    */
   public static saveWorkRecord(
     recordData: {
@@ -289,34 +311,39 @@ export class StorageService {
   ): { success: boolean; record?: WorkRecord; error?: string } {
     this.initialize();
 
-    // Validation 1: OT count non-negative
     const ot = Math.max(0, Math.floor(Number(recordData.ot_count) || 0));
 
-    // Validation 2: Ensure valid date
     if (!recordData.work_date) {
       return { success: false, error: 'Work date is required.' };
     }
 
-    const records = this.getWorkRecords();
-    const rates = this.getRates();
+    if (!recordData.driver_id) {
+      return { success: false, error: 'Driver selection is required.' };
+    }
 
-    // Check for existing record on this date for this driver
-    const existingIndex = records.findIndex(
+    let records = this.getWorkRecords();
+    const rates = this.getRates();
+    const now = new Date().toISOString();
+
+    // Check for existing record for this driver and date
+    const existing = records.find(
       (r) => r.driver_id === recordData.driver_id && r.work_date === recordData.work_date
     );
 
-    const now = new Date().toISOString();
+    // CRITICAL: Filter out any existing records matching this driver and date to guarantee NO duplicates!
+    records = records.filter(
+      (r) => !(r.driver_id === recordData.driver_id && r.work_date === recordData.work_date)
+    );
 
-    if (existingIndex >= 0) {
-      // Editing existing record
-      const existing = records[existingIndex];
-      
-      // Preserve original rate snapshot unless specifically admin override
+    let savedRecord: WorkRecord;
+
+    if (existing) {
+      // Update existing record
       const regRate = existing.regular_rate || rates.regular_rate;
       const otRate = existing.ot_rate || rates.ot_rate;
       const earnings = (recordData.regular_shift ? regRate : 0) + (ot * otRate);
 
-      const updatedRecord: WorkRecord = {
+      savedRecord = {
         ...existing,
         regular_shift: recordData.regular_shift,
         ot_count: ot,
@@ -327,7 +354,7 @@ export class StorageService {
         updated_at: now,
       };
 
-      records[existingIndex] = updatedRecord;
+      records.unshift(savedRecord);
       localStorage.setItem(STORAGE_KEYS.WORK_RECORDS, JSON.stringify(records));
 
       this.addAuditLog({
@@ -336,19 +363,17 @@ export class StorageService {
         actor_name: actor.full_name,
         action: 'UPDATE',
         entity_type: 'work_record',
-        entity_id: updatedRecord.id,
-        details: `Updated entry for ${recordData.work_date}: Shift=${recordData.regular_shift ? 'Yes' : 'No'}, OT=${ot}, Total=₹${earnings} (Prev: Shift=${existing.regular_shift ? 'Yes' : 'No'}, OT=${existing.ot_count}, Total=₹${existing.total_earnings})`,
+        entity_id: savedRecord.id,
+        details: `Updated entry for ${recordData.work_date} (No duplicate): Shift=${recordData.regular_shift ? 'Yes' : 'No'}, OT=${ot}, Total=₹${earnings} (Prev: Shift=${existing.regular_shift ? 'Yes' : 'No'}, OT=${existing.ot_count})`,
         created_at: now,
       });
-
-      return { success: true, record: updatedRecord };
     } else {
-      // Create new record
+      // Insert new unique record
       const regRate = rates.regular_rate;
       const otRate = rates.ot_rate;
       const earnings = (recordData.regular_shift ? regRate : 0) + (ot * otRate);
 
-      const newRecord: WorkRecord = {
+      savedRecord = {
         id: recordData.id || `rec-${recordData.driver_id}-${recordData.work_date}`,
         driver_id: recordData.driver_id,
         work_date: recordData.work_date,
@@ -363,7 +388,7 @@ export class StorageService {
         created_by: actor.full_name,
       };
 
-      records.push(newRecord);
+      records.unshift(savedRecord);
       localStorage.setItem(STORAGE_KEYS.WORK_RECORDS, JSON.stringify(records));
 
       this.addAuditLog({
@@ -372,17 +397,17 @@ export class StorageService {
         actor_name: actor.full_name,
         action: 'CREATE',
         entity_type: 'work_record',
-        entity_id: newRecord.id,
+        entity_id: savedRecord.id,
         details: `Created entry for ${recordData.work_date}: Shift=${recordData.regular_shift ? 'Yes' : 'No'}, OT=${ot}, Total=₹${earnings}`,
         created_at: now,
       });
-
-      return { success: true, record: newRecord };
     }
+
+    return { success: true, record: savedRecord };
   }
 
   /**
-   * Delete a work record (Admin only or permitted)
+   * Delete a work record
    */
   public static deleteWorkRecord(recordId: string, actor: UserProfile): boolean {
     const records = this.getWorkRecords();
@@ -484,7 +509,6 @@ export class StorageService {
   public static addAuditLog(log: AuditLog): void {
     const logs = this.getAuditLogs();
     logs.unshift(log);
-    // Keep last 500 logs to maintain lightweight local storage
     if (logs.length > 500) {
       logs.length = 500;
     }
@@ -507,7 +531,6 @@ export class StorageService {
     const allRecords = this.getWorkRecords();
     const allPayments = this.getPayments();
 
-    // Filter by driver and month prefix (YYYY-MM)
     const records = allRecords
       .filter((r) => r.driver_id === driverId && r.work_date.startsWith(monthPeriod))
       .sort((a, b) => a.work_date.localeCompare(b.work_date));
